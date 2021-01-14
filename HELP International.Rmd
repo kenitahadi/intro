@@ -1,0 +1,127 @@
+---
+title: ' **Individual Assignment 1**'
+subtitle: "K-means Cluster on Countries Overall Development for HELP International"
+author: "Kenita Hadi"
+date: "6/11/2020"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  df_print: kable
+  fig_caption: yes
+  fig_height: 4
+  fig_width: 5
+  highlight: pygments
+  number_sections: yes
+  toc: yes
+  toc_depth: 2
+  word_document: default
+fontsize: 11pt
+---
+\newpage
+
+
+# **INTRODUCTION**
+The analysis provides insights for **HELP International** to support funding on countries that are in most needs of financial aids based on health and wealth factors. HELP International is a non-profit organization that committed to tackle global poverty and help countries' recovery from natural disasters by various humanitarian projects. The NGO has successfully raised $10 million and the CEO wants to make sure to target this funds strategically. Therefore, this research adopts the partitional clustering method that aims to answer the following research questions;
+
+*What characterized the targeted countries to be rightful for the financial aids?*
+
+*Which group of countries that are appropriate for HELP Internationals to distribute funding to?*
+
+
+# **DATA**
+The data set consists of 9 variables that constitute socio-economic and well-being factors of children mortality rate\footnote{Given as the death of children under 5 years old per 1000 inhabitants}, exports and imports of goods and services per capita\footnote{Given as the percentage of GDP per capita}, health spending\footnote{Given as the percentage of GDP per capita}, net income, inflation rate, life expectancy, total fertility rate and GDP per capita. The figure below summarizes the overall development of countries based on selected variables that are considered significant to represent countries' overall development ;
+
+```{r echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+#Loading data and Dropping Country's Name
+data <- read.csv("C:/Users/Kenita/Documents/EUR/Master/Seminar Data Science for Marketing Analytics/Assignment 1/Country-data.csv")
+summary(data)
+```
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=3, fig.align='center', fig.width=6}
+#Plot data
+library(ggplot2)
+
+ggplot(data) +
+  geom_point(aes(x = gdpp, y= life_expec,
+  			size=child_mort, color=exports-imports, alpha = 0.3)) +
+        scale_size_continuous(range = c(2, 10)) +
+        scale_colour_gradientn(colours = c(low = "red", high = "green")) +
+        labs(title="Countries Overall Wealth and Health Chart",
+       x="Income (GDP per capita)", 
+       y="Life expectancy") +
+      theme(plot.title = element_text(size = 11, face = "bold"))
+```
+
+It can be seen that most countries in the world belong to the first income level of below $25,000 per capita and only a few countries exceed this level. There is relatively more variation in the life expectancy that is represented by the distribution of many data points along the y axis. 
+
+# **METHODOLOGY**
+The partitional-based clustering is the technique selected to make the division on countries based on their socio-economic and well-being characteristics, in particular K-means method. K-means is considerably the most widely used clustering principle due to its computational efficiency and simplicity *(Äyrämö & Kärkkäinen, 2016)*. The algorithm results in finding group of countries that are most compact in terms of the sum of squared deviation, as well as keeping the deviation sufficiently large between groups. 
+
+Before running the analysis, the preliminary step requires the variables to be standardized to Z scores. The next and most crucial step of the analysis, as well as the most distinct feature of partitional clustering is to pre-define the number of centroids (K number of groups). The three most commonly used methods to pre specify the initial number of clusters are from the diagnostics of Elbow, Silhouette, and Gap Statistics criterion. Elbow determines the optimal number of K by calculating the within Sum of Squared errors, Silhouette measures the quality of the clusters, and Gap Statistics compares the intra-cluster variation to their expected values. Once determined, the algorithm then allocates every data point to the corresponding cluster with the nearest seed. 
+
+Despite the statistical interference obtained from these selection criterion, they are merely used to obtain a more confident decision. The selection of clusters will consider the degree in which it is pragmatic for HELP Organization.
+
+# **RESULTS**
+The table below provides outcome on the optimal number of clusters obtained from Elbow, Average Silhouette, and Gap Statistics method. It appears that the outcomes differ by each technique (though the results of Elbow is rather vague). It can be concluded that the optimal number of cluster range from 3 to 5.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.keep='none'}
+#Standardized data to mean 0 and SE equals to 1
+scaled.data <- scale(data[-1], center = TRUE, scale = TRUE)
+
+#K-means cluster
+library(cluster)
+library(NbClust)
+library(factoextra)
+
+#Elbow Method
+fviz_nbclust(scaled.data, kmeans, method = "wss") +
+    geom_vline(xintercept = 3, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+# Silhouette method
+fviz_nbclust(scaled.data, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+#Gap Method
+set.seed(123)
+fviz_nbclust(scaled.data, kmeans, nstart = 25,  method = "gap_stat", nboot = 50)+
+  labs(subtitle = "Gap statistic method")
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+numbers <- data.frame(4, 5, 3)
+colnames(numbers) <- c("Elbow", "Silhouette", "Gap Statistic")
+
+library(kableExtra)
+
+kable(numbers, "latex",booktabs=TRUE, caption = "The Optimal Number of Clusters", longtable=T) 
+```
+
+When running the k-means on the suggested number of clusters (3, 4, & 5), there is no noticeable differences in the means of the variables after 3 clusters. The cluster plot\footnote{refer to appendix clusterplot} recognizes 3 distinct categorization of countries of the size of 36 for well developed countries, 84 for developing countries, and 47 of relatively under developed countries. A further number of clusters break down cluster 1 into smaller clusters of highly developed countries such as Norway and Switzerland that are considered as outliers. 
+
+Since the focus of HELP International is limited to countries belong to the under-developed countries, 3 clusters are considered sufficient to emphasize these characteristics. The targeted group of countries is therefore belong to cluster 3\footnote{refer to appendix}, that is dominated by countries in Africa. This can be seen from the mean of each variable belong to each cluster. Cluster 3 appears to score the highest on child mortality rate, inflation rate, and total fertility while having the lowest life expectancy and gdpp that characterize under-developed countries. 
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.height=4, fig.width=5}
+#K-means operation for 4 clusters
+set.seed(123)
+seg.k <- kmeans(scaled.data, centers=3)
+
+#Concluding means on the 4 clusters
+factors <- aggregate(data[-1], by=list(cluster=seg.k$cluster), mean)
+kable(factors, "latex",booktabs=TRUE, caption = "Means on each Clusters", digits=3, longtable=T)
+
+combined <- cbind(data, cluster = seg.k$cluster)
+
+```
+
+# **APPENDIX**
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.align='left', fig.width=5, fig.height=3.7}
+#Clusterplot
+clusplot(scaled.data, seg.k$cluster, color = TRUE, shade = TRUE, labels = 4, lines = 0, main="K-means Cluster Plot for Countries")
+```
+## List of Countries belong to Cluster 2
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# List of Countries belong to Cluster 2
+res <- subset(combined, cluster==3)
+print(res$country)
+```
