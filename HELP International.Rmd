@@ -73,6 +73,8 @@ library(cluster)
 library(NbClust)
 library(factoextra)
 
+str(scaled.data)
+
 #Elbow Method
 fviz_nbclust(scaled.data, kmeans, method = "wss") +
     geom_vline(xintercept = 3, linetype = 2)+
